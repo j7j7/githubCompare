@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
@@ -27,10 +28,13 @@ func CloneRepository(opts CloneOptions) (string, error) {
 		return "", fmt.Errorf("failed to create temp directory: %w", err)
 	}
 
-	// Configure clone options
+	// Configure clone options - fetch all branches
 	cloneOpts := &git.CloneOptions{
-		URL:      opts.URL,
-		Progress: os.Stdout,
+		URL:               opts.URL,
+		Progress:         os.Stdout,
+		SingleBranch:     false,
+		Depth:            0, // Full clone to get all branches
+		RecurseSubmodules: git.NoRecurseSubmodules,
 	}
 
 	// Set up authentication
@@ -43,9 +47,19 @@ func CloneRepository(opts CloneOptions) (string, error) {
 	}
 
 	// Clone the repository
-	_, err = git.PlainClone(clonePath, false, cloneOpts)
+	repo, err := git.PlainClone(clonePath, false, cloneOpts)
 	if err != nil {
 		return "", fmt.Errorf("failed to clone repository: %w", err)
+	}
+
+	// Fetch all remote branches
+	remotes, err := repo.Remotes()
+	if err == nil && len(remotes) > 0 {
+		remote := remotes[0]
+		err = remote.Fetch(&git.FetchOptions{
+			RefSpecs: []config.RefSpec{"refs/heads/*:refs/remotes/origin/*"},
+		})
+		// Ignore fetch errors - branches might already be fetched
 	}
 
 	return clonePath, nil

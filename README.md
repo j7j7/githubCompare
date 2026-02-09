@@ -6,11 +6,14 @@ A command-line tool to compare changes between two Git commits or branches and e
 
 - ✅ Cross-platform support (Linux, macOS, Windows)
 - ✅ Works with public and private repositories
-- ✅ Interactive branch and commit selection
+- ✅ **Beautiful interactive interface** with colors and intuitive prompts
+- ✅ **Command-line mode** for automation (non-interactive)
+- ✅ Interactive branch and commit selection with formatted display
 - ✅ Supports both HTTPS and SSH URLs
 - ✅ Creates ZIP archives with only changed files
 - ✅ Preserves directory structure
 - ✅ Automatic cleanup of temporary files
+- ✅ Color-coded change types (added/modified/deleted/renamed)
 
 ## Installation
 
@@ -40,36 +43,70 @@ The binaries will be in the `dist/` directory.
 
 ## Usage
 
-### Basic Usage
+### Interactive Mode (Recommended)
 
 ```bash
 githubCompare --repo https://github.com/owner/repo
 ```
 
 This will:
-1. Clone the repository
-2. Prompt you to select a branch
-3. Show commits and let you select start and end points
-4. Create a ZIP file with only the changed files
+1. **Display a beautiful header** with repository information
+2. **Clone the repository** with progress indication
+3. **Show formatted branch list** and prompt you to select one
+4. **Display commits** with author, date, and messages in an easy-to-read format
+5. **Show a summary** of changes with color-coded file types
+6. **Create a ZIP file** with only the changed files
 
-### Advanced Usage
+The interface uses colors to make it easy to understand:
+- 🟢 **Green** for added files and success messages
+- 🟡 **Yellow** for modified files and commits
+- 🔴 **Red** for deleted files and errors
+- 🟣 **Magenta** for renamed files and branches
+- 🔵 **Blue** for information and sections
+
+### Command-Line Mode (Non-Interactive)
+
+For automation or when you know the exact refs:
 
 ```bash
-# Specify start and end commits directly
+# Specify start and end commits directly (skips all prompts)
 githubCompare --repo https://github.com/owner/repo \
   --start abc1234 \
   --end def5678 \
   --output changes.zip
 
+# Compare branches
+githubCompare --repo https://github.com/owner/repo \
+  --start main \
+  --end feature-branch
+
+# Mix commits and branches
+githubCompare --repo https://github.com/owner/repo \
+  --start main \
+  --end abc1234
+```
+
+### Authentication
+
+```bash
 # Use with private repository (HTTPS)
 githubCompare --repo https://github.com/owner/private-repo \
   --auth-token YOUR_GITHUB_TOKEN
 
 # Use SSH URL (uses your SSH keys automatically)
 githubCompare --repo git@github.com:owner/repo.git
+```
 
+### Other Options
+
+```bash
 # Keep temporary directory for inspection
 githubCompare --repo https://github.com/owner/repo --no-cleanup
+
+# Specify custom output path
+githubCompare --repo https://github.com/owner/repo \
+  --start main --end feature \
+  --output /path/to/custom-output.zip
 ```
 
 ### Command Line Options

@@ -22,7 +22,27 @@ var rootCmd = &cobra.Command{
 	Long: `githubCompare is a CLI tool that allows you to compare changes between
 two Git commits or branches and export only the changed files as a ZIP archive.
 
-It supports both public and private repositories, and can work with HTTPS or SSH URLs.`,
+It supports both public and private repositories, and can work with HTTPS or SSH URLs.
+
+INTERACTIVE MODE:
+  When you provide only --repo, the tool will guide you through:
+  1. Selecting a branch
+  2. Selecting start and end commits
+  3. Creating the ZIP archive
+
+COMMAND-LINE MODE:
+  Provide --start and --end to skip interactive prompts:
+  githubCompare --repo <url> --start <ref> --end <ref>
+
+EXAMPLES:
+  # Interactive mode
+  githubCompare --repo https://github.com/owner/repo
+
+  # Command-line mode
+  githubCompare --repo https://github.com/owner/repo --start main --end feature-branch
+
+  # With specific commits
+  githubCompare --repo https://github.com/owner/repo --start abc1234 --end def5678`,
 	Run: runCompare,
 }
 

@@ -15,14 +15,14 @@ func GetChangedFiles(repoPath, startRef, endRef string) ([]FileChange, error) {
 		return nil, fmt.Errorf("failed to open repository: %w", err)
 	}
 
-	// Resolve start reference
-	startHash, err := repo.ResolveRevision(plumbing.Revision(startRef))
+	// Resolve start reference (try multiple formats)
+	startHash, err := ResolveRef(repo, startRef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve start reference %s: %w", startRef, err)
 	}
 
-	// Resolve end reference
-	endHash, err := repo.ResolveRevision(plumbing.Revision(endRef))
+	// Resolve end reference (try multiple formats)
+	endHash, err := ResolveRef(repo, endRef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve end reference %s: %w", endRef, err)
 	}
@@ -82,43 +82,22 @@ func GetChangedFiles(repoPath, startRef, endRef string) ([]FileChange, error) {
 	return fileChanges, nil
 }
 
-// ValidateRefs validates that both references exist and start is ancestor of end
+// ValidateRefs validates that both references exist
 func ValidateRefs(repoPath, startRef, endRef string) error {
 	repo, err := git.PlainOpen(repoPath)
 	if err != nil {
 		return fmt.Errorf("failed to open repository: %w", err)
 	}
 
-	// Resolve references
-	startHash, err := repo.ResolveRevision(plumbing.Revision(startRef))
+	// Resolve references - just check they exist (try multiple formats)
+	_, err = ResolveRef(repo, startRef)
 	if err != nil {
 		return fmt.Errorf("start reference %s not found: %w", startRef, err)
 	}
 
-	endHash, err := repo.ResolveRevision(plumbing.Revision(endRef))
+	_, err = ResolveRef(repo, endRef)
 	if err != nil {
 		return fmt.Errorf("end reference %s not found: %w", endRef, err)
-	}
-
-	// Check if start is ancestor of end
-	startCommit, err := repo.CommitObject(*startHash)
-	if err != nil {
-		return fmt.Errorf("failed to get start commit: %w", err)
-	}
-
-	endCommit, err := repo.CommitObject(*endHash)
-	if err != nil {
-		return fmt.Errorf("failed to get end commit: %w", err)
-	}
-
-	// Check if start is ancestor of end
-	isAncestor, err := endCommit.IsAncestor(startCommit)
-	if err != nil {
-		return fmt.Errorf("failed to check ancestry: %w", err)
-	}
-
-	if !isAncestor && startHash.String() != endHash.String() {
-		return fmt.Errorf("start reference %s is not an ancestor of end reference %s", startRef, endRef)
 	}
 
 	return nil

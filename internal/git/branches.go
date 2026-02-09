@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // ListBranches lists all branches in the repository
@@ -34,6 +35,30 @@ func ListBranches(repoPath string) ([]Branch, error) {
 				IsRemote: false,
 				IsHead:   ref.Hash() == head.Hash(),
 			}
+			
+			// Get last commit for this branch
+			var commit *object.Commit
+			commit, err = repo.CommitObject(ref.Hash())
+			if err == nil {
+				message := strings.TrimSpace(commit.Message)
+				// Get first line of commit message
+				if idx := strings.Index(message, "\n"); idx > 0 {
+					message = message[:idx]
+				}
+				// Truncate if too long
+				if len(message) > 60 {
+					message = message[:57] + "..."
+				}
+				
+				branch.LastCommit = &Commit{
+					Hash:      commit.Hash.String(),
+					ShortHash: commit.Hash.String()[:7],
+					Message:   message,
+					Author:    commit.Author.Name,
+					Date:      commit.Author.When,
+				}
+			}
+			
 			branches = append(branches, branch)
 		}
 		return nil
@@ -66,11 +91,36 @@ func ListBranches(repoPath string) ([]Branch, error) {
 					}
 				}
 				if !exists {
-					branches = append(branches, Branch{
+					branch := Branch{
 						Name:     branchName,
 						IsRemote: true,
 						IsHead:   false,
-					})
+					}
+					
+					// Get last commit for remote branch
+					var commit *object.Commit
+					commit, err = repo.CommitObject(ref.Hash())
+					if err == nil {
+						message := strings.TrimSpace(commit.Message)
+						// Get first line of commit message
+						if idx := strings.Index(message, "\n"); idx > 0 {
+							message = message[:idx]
+						}
+						// Truncate if too long
+						if len(message) > 60 {
+							message = message[:57] + "..."
+						}
+						
+						branch.LastCommit = &Commit{
+							Hash:      commit.Hash.String(),
+							ShortHash: commit.Hash.String()[:7],
+							Message:   message,
+							Author:    commit.Author.Name,
+							Date:      commit.Author.When,
+						}
+					}
+					
+					branches = append(branches, branch)
 				}
 			}
 		}

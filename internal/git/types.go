@@ -4,9 +4,10 @@ import "time"
 
 // Branch represents a Git branch
 type Branch struct {
-	Name     string
-	IsRemote bool
-	IsHead   bool
+	Name         string
+	IsRemote     bool
+	IsHead       bool
+	LastCommit   *Commit // Last commit on this branch
 }
 
 // Commit represents a Git commit

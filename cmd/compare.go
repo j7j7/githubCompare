@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/githubCompare/internal/archive"
+	"github.com/githubCompare/internal/display"
 	"github.com/githubCompare/internal/git"
 	"github.com/githubCompare/internal/interactive"
 	"github.com/githubCompare/internal/utils"
@@ -36,7 +37,17 @@ func runCompare(cmd *cobra.Command, args []string) {
 		}()
 	}
 
-	fmt.Printf("Cloning repository %s...\n", repoURL)
+	// Display header
+	display.PrintHeader("GitHub Compare")
+	fmt.Printf("\n")
+	display.Info.Printf("Repository: %s\n", repoURL)
+	if repoInfo.Name != "" {
+		display.Info.Printf("Project: %s/%s\n", repoInfo.Owner, repoInfo.Name)
+	}
+	fmt.Println()
+
+	display.PrintSection("Cloning Repository")
+	fmt.Printf("  Cloning %s...\n", repoURL)
 
 	// Clone repository
 	cloneOpts := git.CloneOptions{
@@ -47,92 +58,113 @@ func runCompare(cmd *cobra.Command, args []string) {
 
 	repoPath, err := git.CloneRepository(cloneOpts)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error cloning repository: %v\n", err)
+		display.PrintError(fmt.Sprintf("Failed to clone repository: %v", err))
 		os.Exit(1)
 	}
 
-	fmt.Printf("Repository cloned successfully to %s\n", repoPath)
+	display.PrintSuccess("Repository cloned successfully")
 
 	// List branches
-	fmt.Println("\nFetching branches...")
+	display.PrintSection("Fetching Branches")
 	branches, err := git.ListBranches(repoPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error listing branches: %v\n", err)
+		display.PrintError(fmt.Sprintf("Failed to list branches: %v", err))
 		os.Exit(1)
 	}
 
-	// Select branch if not provided
-	selectedBranch := endRef
-	if selectedBranch == "" {
-		selectedBranch, err = interactive.SelectBranch(branches)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error selecting branch: %v\n", err)
-			os.Exit(1)
-		}
-	}
-
-	// List commits for selected branch
-	fmt.Printf("\nFetching commits for branch '%s'...\n", selectedBranch)
-	commits, err := git.ListCommits(repoPath, selectedBranch, 100)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error listing commits: %v\n", err)
-		os.Exit(1)
-	}
-
-	if len(commits) == 0 {
-		fmt.Fprintf(os.Stderr, "No commits found for branch %s\n", selectedBranch)
-		os.Exit(1)
-	}
-
-	// Select start commit
-	var startCommit string
-	if startRef != "" {
+	// If both start and end are provided, skip interactive selection
+	var startCommit, endCommit string
+	if startRef != "" && endRef != "" {
 		startCommit = startRef
+		endCommit = endRef
+		display.Info.Printf("Using start reference: %s\n", startRef)
+		display.Info.Printf("Using end reference: %s\n", endRef)
+		fmt.Println()
 	} else {
-		startCommit, err = interactive.SelectCommit(commits, "Select start commit:")
+		// Select branch if not provided
+		selectedBranch := endRef
+		if selectedBranch == "" {
+			selectedBranch, err = interactive.SelectBranch(branches)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error selecting branch: %v\n", err)
+				os.Exit(1)
+			}
+		}
+
+		// List commits for selected branch
+		display.PrintSection(fmt.Sprintf("Fetching Commits for Branch '%s'", selectedBranch))
+		commits, err := git.ListCommits(repoPath, selectedBranch, 100)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error selecting start commit: %v\n", err)
+			display.PrintError(fmt.Sprintf("Failed to list commits: %v", err))
 			os.Exit(1)
 		}
-	}
 
-	// Select end commit
-	var endCommit string
-	if endRef != "" {
-		endCommit = endRef
-	} else {
-		endCommit, err = interactive.SelectCommit(commits, "Select end commit:")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error selecting end commit: %v\n", err)
+		if len(commits) == 0 {
+			display.PrintWarning(fmt.Sprintf("No commits found for branch %s", selectedBranch))
 			os.Exit(1)
+		}
+
+		// Select start commit
+		if startRef != "" {
+			startCommit = startRef
+			display.Info.Printf("Using start reference: %s\n", startRef)
+		} else {
+			startCommit, err = interactive.SelectCommit(commits, "Select START commit (older commit):")
+			if err != nil {
+				display.PrintError(fmt.Sprintf("Failed to select start commit: %v", err))
+				os.Exit(1)
+			}
+		}
+
+		// Select end commit
+		if endRef != "" {
+			endCommit = endRef
+			display.Info.Printf("Using end reference: %s\n", endRef)
+		} else {
+			endCommit, err = interactive.SelectCommit(commits, "Select END commit (newer commit):")
+			if err != nil {
+				display.PrintError(fmt.Sprintf("Failed to select end commit: %v", err))
+				os.Exit(1)
+			}
 		}
 	}
 
 	// Validate refs
-	fmt.Println("\nValidating references...")
+	display.PrintSection("Validating References")
 	if err := git.ValidateRefs(repoPath, startCommit, endCommit); err != nil {
-		fmt.Fprintf(os.Stderr, "Error validating references: %v\n", err)
+		display.PrintError(fmt.Sprintf("Reference validation failed: %v", err))
 		os.Exit(1)
 	}
+	display.PrintSuccess("References validated")
 
 	// Get changed files
-	fmt.Println("\nComparing changes...")
+	display.PrintSection("Comparing Changes")
 	fileChanges, err := git.GetChangedFiles(repoPath, startCommit, endCommit)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting changed files: %v\n", err)
+		display.PrintError(fmt.Sprintf("Failed to compare changes: %v", err))
 		os.Exit(1)
 	}
 
 	if len(fileChanges) == 0 {
-		fmt.Println("No files changed between the selected commits.")
+		display.PrintWarning("No files changed between the selected commits.")
 		os.Exit(0)
 	}
 
-	fmt.Printf("Found %d changed file(s)\n", len(fileChanges))
+	// Display changes summary
+	startShort := startCommit
+	endShort := endCommit
+	if len(startCommit) > 7 {
+		startShort = startCommit[:7]
+	}
+	if len(endCommit) > 7 {
+		endShort = endCommit[:7]
+	}
+	display.PrintSummary(startShort, endShort, len(fileChanges))
+	display.PrintChanges(fileChanges)
 
 	// Generate output path if not provided
 	if outputPath == "" {
-		outputPath = archive.GenerateOutputName(repoInfo.Name, startCommit[:7], endCommit[:7])
+		outputPath = archive.GenerateOutputName(repoInfo.Name, startShort, endShort)
 	}
 
 	// Ensure output directory exists
@@ -152,18 +184,23 @@ func runCompare(cmd *cobra.Command, args []string) {
 	}
 
 	// Create ZIP archive
-	fmt.Printf("\nCreating ZIP archive: %s\n", outputPath)
+	display.PrintSection("Creating Archive")
+	fmt.Printf("  Output: %s\n", outputPath)
+	
 	if err := archive.CreateZipFromChanges(repoPath, archiveChanges, outputPath); err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating ZIP archive: %v\n", err)
+		display.PrintError(fmt.Sprintf("Failed to create ZIP archive: %v", err))
 		os.Exit(1)
 	}
 
 	// Get absolute path for display
 	absPath, _ := filepath.Abs(outputPath)
-	fmt.Printf("\n✓ Successfully created archive: %s\n", absPath)
-	fmt.Printf("  Changed files: %d\n", len(fileChanges))
-
+	
+	display.PrintHeader("Complete!")
+	display.PrintSuccess(fmt.Sprintf("Archive created: %s", absPath))
+	display.Count.Printf("  Changed files: %d\n", len(fileChanges))
+	
 	if noCleanup {
-		fmt.Printf("  Temp directory kept: %s\n", repoPath)
+		display.Info.Printf("  Temp directory kept: %s\n", repoPath)
 	}
+	fmt.Println()
 }
