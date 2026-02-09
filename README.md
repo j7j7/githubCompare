@@ -223,7 +223,17 @@ Example: `vscode_abc1234_to_def5678_20260109_143022.zip`
 
 ## License
 
-[Add your license here]
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+### What this means:
+
+- ✅ **Free to use** - You can use this software for any purpose
+- ✅ **Free to modify** - You can modify the source code
+- ✅ **Free to distribute** - You can share the software
+- 🔒 **Copyleft** - If you distribute modified versions, you must also license them under GPL v3
+- 📋 **Source code required** - Modified versions must include source code
+
+For more information, visit: https://www.gnu.org/licenses/gpl-3.0.html
 
 ## Contributing
 
