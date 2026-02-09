@@ -1,0 +1,36 @@
+# Binaries
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+githubCompare
+githubCompare.exe
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary directories
+tmp/
+temp/
